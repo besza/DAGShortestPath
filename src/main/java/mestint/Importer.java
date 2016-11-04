@@ -2,8 +2,8 @@ package mestint;
 
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -13,8 +13,8 @@ public class Importer {
     private Importer() {
     }
 
-    public static Game importGame(File file) {
-        try (Scanner scanner = new Scanner(file)) {
+    public static Game importGame(Path path) {
+        try (Scanner scanner = new Scanner(path)) {
             int starSystems = scanner.nextInt();
             int wormHoles = scanner.nextInt();
             int startingStarSystemId = scanner.nextInt();
@@ -42,9 +42,8 @@ public class Importer {
 
             return new Game(startingStarSystemId, goalStarSystemId, uraniumMaxCapacity, graph);
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        return null;
     }
 }
