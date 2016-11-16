@@ -1,11 +1,16 @@
 package mestint;
 
-import org.jgrapht.graph.DefaultWeightedEdge;
+import lombok.*;
+import org.jgrapht.graph.*;
 
-public class Wormhole extends DefaultWeightedEdge{
+public class Wormhole extends DefaultEdge {
 
+    @Getter
+    @Setter
+    private int weight = 0;
+    
     @Override
     public String toString() {
-        return this.getSource() + " -> " + this.getTarget() + " with weight = " + this.getWeight();
+        return this.getSource() + " -> " + this.getTarget() + " with weight = " + weight;
     }
 }

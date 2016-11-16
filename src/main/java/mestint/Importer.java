@@ -23,10 +23,10 @@ public class Importer {
 
             SimpleDirectedWeightedGraph<StarSystem, Wormhole> graph = new SimpleDirectedWeightedGraph<>(Wormhole.class);
 
-            for (int i = 0; i < starSystems; ++i) {
-                int uranium = scanner.nextInt();
+            for (int i = 1; i <= starSystems; ++i) {
                 int titanium = scanner.nextInt();
-                graph.addVertex(new StarSystem(uranium, titanium));
+                int uranium = scanner.nextInt();
+                graph.addVertex(new StarSystem(titanium, uranium, i));
             }
 
             Set<StarSystem> vertexSet = graph.vertexSet();
@@ -37,7 +37,7 @@ public class Importer {
                 //no need to do ifPresent, these vertices definitely exist
                 Wormhole edge = graph.addEdge(vertexSet.stream().filter(v -> v.getId() == sourceId).findFirst().get(),
                         vertexSet.stream().filter(u -> u.getId() == targetId).findFirst().get());
-                graph.setEdgeWeight(edge, weight);
+                edge.setWeight(weight);
             }
 
             return new Game(startingStarSystemId, goalStarSystemId, uraniumMaxCapacity, graph);
