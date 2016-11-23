@@ -1,10 +1,10 @@
 package mestint;
 
-import lombok.*;
 import org.jgrapht.*;
 import org.jgrapht.traverse.*;
 
 import java.util.*;
+import java.util.stream.*;
 
 public class Solver {
 
@@ -14,6 +14,8 @@ public class Solver {
 
     private Map<StarSystem, StarSystem> pred;
 
+    private List<StarSystem> topoOrder;
+
     public Solver(Game game) {
         this.game = Objects.requireNonNull(game);
 
@@ -21,89 +23,68 @@ public class Solver {
 
         pred = new HashMap<>(size);
         opt = new HashMap<>(size);
+        topoOrder = new ArrayList<>();
 
         game.getGraph().vertexSet().forEach(node -> {
-            opt.put(node, null);
-            pred.put(node, null);
+            if (node.getId() == game.getStartingStarSystemId()) {
+                opt.put(node, Resources.of(node.getTitanium(), game.getUraniumCapacity()));
+            } else {
+                opt.put(node, new Resources(-1, -1));
+            }
+            pred.put(node, node);
         });
+
+        Iterator<StarSystem> iterator = new TopologicalOrderIterator<StarSystem, Wormhole>(game.getGraph());
+        iterator.forEachRemaining(topoOrder::add);
+
+    }
+
+    private boolean isNodeBeforeStartInTopoOrder(StarSystem node) {
+        StarSystem start = game.getStarSystemById(game.getStartingStarSystemId());
+        return topoOrder.indexOf(start) > topoOrder.indexOf(node);
     }
 
     public int getMaxReachableTitanium() {
 
-        Iterator<StarSystem> iterator = new TopologicalOrderIterator<StarSystem, Wormhole>(game.getGraph());
-        while (iterator.hasNext()) {
-            StarSystem starSystem = iterator.next();
-            if (game.getGraph().inDegreeOf(starSystem) > 0) {
-                Resources max = new Resources(Integer.MIN_VALUE, Integer.MIN_VALUE);
+        StarSystem goal = game.getStarSystemById(game.getGoalStarSystemId());
+        StarSystem start = game.getStarSystemById(game.getStartingStarSystemId());
+
+        for (int i = topoOrder.indexOf(start); i <= topoOrder.indexOf(goal); i++) {
+            StarSystem starSystem = topoOrder.get(i);
+            if (game.getGraph().inDegreeOf(starSystem) != 0 && game.getGraph().outDegreeOf(starSystem) != 0) {
+                Resources max = new Resources(-2, -2);
                 StarSystem parent = null;
-                for (StarSystem star : Graphs.predecessorListOf(game.getGraph(), starSystem)) {
-                    Resources res = opt.get(star);
+                for (StarSystem star : Graphs.predecessorListOf(game.getGraph(), starSystem).stream().filter(v -> !isNodeBeforeStartInTopoOrder(v)).collect(Collectors.toList())) {
+                    final Resources best = opt.get(star);
+                    Resources current = Resources.of(best.getTitanium(), best.getUranium());
                     int cost = game.getGraph().getEdge(star, starSystem).getWeight();
                     //ignore edges which has cost more than the capacity
                     if (cost > game.getUraniumCapacity()) continue;
                     //substract the travel cost
-                    res.uranium -= cost;
+                    current = Resources.of(current.getTitanium(), current.getUranium() - cost);
 
                     //we didn't have enough uranium to travel this edge, trade 1 titanium to refill
-                    if (res.uranium < 0) {
-                        --res.titanium;
-                        res.uranium = game.getUraniumCapacity() - cost;
+                    if (current.getUranium() < 0) {
+                        current = Resources.of(current.getTitanium() - 1, game.getUraniumCapacity() - cost);
                     }
 
-                    if (res.titanium > max.titanium) {
-                        max.titanium = res.titanium;
-                        max.uranium = res.uranium;
+                    if (current.compareTo(max) > 0) {
+                        max = Resources.of(current.getTitanium(), current.getUranium());
                         parent = star;
                     }
                 }
 
-                if (max.titanium >= 0) {
-                    max.titanium += starSystem.getTitanium();
-                    max.uranium += starSystem.getUranium();
-                    if (max.uranium > game.getUraniumCapacity())
-                        max.uranium = game.getUraniumCapacity();
+                if (max.getTitanium() >= 0) {
+                    max = Resources.of(max.getTitanium() + starSystem.getTitanium(), max.getUranium() + starSystem.getUranium());
+                    if (max.getUranium() > game.getUraniumCapacity()) {
+                        max = Resources.of(max.getTitanium(), game.getUraniumCapacity());
+                    }
                     opt.replace(starSystem, max);
                     pred.replace(starSystem, parent);
                 }
-
-            } else {
-                //initialize trivially
-                opt.replace(starSystem, new Resources(starSystem.getTitanium(), game.getUraniumCapacity()));
-                pred.replace(starSystem, starSystem);
             }
         }
 
-        StarSystem goal = game.getStarSystemById(game.getGoalStarSystemId()).get();
-        StarSystem start = game.getStarSystemById(game.getStartingStarSystemId()).get();
-
-        System.out.println(opt.get(goal).getTitanium() + " - " + opt.get(start).getTitanium() + " + " + start.getTitanium());
-        
-        return opt.get(goal).titanium - opt.get(start).titanium + start.getTitanium();
-    }
-
-    /**
-     * Helper class to store resource pair.
-     */
-    private class Resources {
-        @Getter
-        @Setter
-        protected int titanium;
-
-        @Getter
-        @Setter
-        protected int uranium;
-
-        Resources(int t, int u) {
-            titanium = t;
-            uranium = u;
-        }
-
-        @Override
-        public String toString() {
-            return "Resources{" +
-                    "titanium=" + titanium +
-                    ", uranium=" + uranium +
-                    '}';
-        }
+        return opt.get(goal).getTitanium();
     }
 }

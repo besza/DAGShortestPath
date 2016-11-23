@@ -3,8 +3,7 @@ package mestint;
 import lombok.Data;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Data
 public class Game {
@@ -26,7 +25,16 @@ public class Game {
         this.uraniumCapacity = uraniumCapacity;
     }
 
-    public Optional<StarSystem> getStarSystemById(int id) {
-        return graph.vertexSet().stream().filter(v -> v.getId() == id).findFirst();
+    public StarSystem getStarSystemById(int id) {
+        StarSystem ret = null;
+        boolean found = false;
+        for (Iterator<StarSystem> itr = graph.vertexSet().iterator(); itr.hasNext() && !found;) {
+            ret = itr.next();
+            if (ret.getId() == id) {
+                found = true;
+                
+            }
+        }
+        return ret;
     }
 }

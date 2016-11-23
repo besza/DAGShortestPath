@@ -26,10 +26,6 @@ public class StarSystem {
 
     @Override
     public String toString() {
-        return "StarSystem{" +
-                "id=" + id +
-                ", titanium=" + titanium +
-                ", uranium=" + uranium +
-                '}';
+        return "StarSystem(" + id + "," + titanium + "," + uranium + ")";
     }
 }
