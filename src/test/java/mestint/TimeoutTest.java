@@ -41,18 +41,20 @@ public class TimeoutTest {
     
     @Test//(timeout = TIMEOUT)
     public void testInputFile() {
-        String fileName = OUTPUT_FILE_PREFIX + which + TXT_EXT;
-        List<String> correctResults = readFile(FOLDER, fileName);
-
-        Game game = Importer.importGame(Paths.get(FOLDER, INPUT_FILE_PREFIX + which + TXT_EXT));
+        String partialFileName = which + TXT_EXT;
+        
+        List<String> correctResults = readFile(FOLDER, OUTPUT_FILE_PREFIX + partialFileName);
+        
+        Game game = Importer.importGame(Paths.get(FOLDER, INPUT_FILE_PREFIX + partialFileName));
 
         Solver solver = new Solver(game);
-
-        assertThat(solver.getMaxReachableTitanium(), is(Integer.parseInt(correctResults.get(0))));
+        
+        assertThat(solver.getOptimumTitanium(), is(Integer.parseInt(correctResults.get(0))));
     }
 
     @Parameterized.Parameters(name = "be{index}.txt")
-    public static Object[] data() {
-        return IntStream.rangeClosed(0, 9).mapToObj(Integer::new).toArray();
+    public static Collection<Integer> data() {
+        return IntStream.rangeClosed(0, 9).boxed().collect(Collectors.toList());
     }
+
 }

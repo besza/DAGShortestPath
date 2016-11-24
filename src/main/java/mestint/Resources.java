@@ -10,12 +10,12 @@ class Resources implements Comparable<Resources> {
     @Getter
     private final int uranium;
 
-    Resources(int t, int u) {
+    public Resources(int t, int u) {
         titanium = t;
         uranium = u;
     }
     
-    static Resources of(int t, int u) {
+    public static Resources of(int t, int u) {
         return new Resources(t, u);
     }
     
