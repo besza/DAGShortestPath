@@ -55,8 +55,7 @@ public class Solver {
     private void solve() {
 
         for (StarSystem starSystem : topoOrderView) {
-            // TODO: make sure to calculate the opt for the goal vertex, even if it has d(v) = 0 (where d is the outdegree)
-            if (game.getGraph().inDegreeOf(starSystem) != 0 && game.getGraph().outDegreeOf(starSystem) != 0) {
+            if (game.getGraph().inDegreeOf(starSystem) != 0 && game.getGraph().outDegreeOf(starSystem) != 0 || starSystem.equals(goal)) {
                 Resources max = new Resources(-2, -2);
                 StarSystem parent = null;
                 for (StarSystem star : Graphs.predecessorListOf(game.getGraph(), starSystem).stream().filter(v -> !isNodeBeforeStartInTopoOrder(v)).collect(Collectors.toList())) {
@@ -97,5 +96,15 @@ public class Solver {
     
     public int getOptimumTitanium() {
         return opt.get(goal).getTitanium();
+    }
+    
+    public LinkedList<StarSystem> getOptimumPath() {
+        LinkedList<StarSystem> path = new LinkedList<>();
+        path.add(goal);
+        for (StarSystem star = pred.get(goal); !star.equals(start); star = pred.get(star)) {
+            path.addFirst(star);
+        }
+        path.addFirst(start);
+        return path;
     }
 }
