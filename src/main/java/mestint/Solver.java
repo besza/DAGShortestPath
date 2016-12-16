@@ -1,10 +1,9 @@
 package mestint;
 
-import org.jgrapht.*;
-import org.jgrapht.traverse.*;
+import org.jgrapht.alg.DirectedNeighborIndex;
+import org.jgrapht.traverse.TopologicalOrderIterator;
 
 import java.util.*;
-import java.util.stream.*;
 
 public class Solver {
 
@@ -15,8 +14,6 @@ public class Solver {
     private Map<StarSystem, StarSystem> pred;
 
     private final List<StarSystem> topoOrder;
-
-    private List<StarSystem> topoOrderView;
 
     private final StarSystem start;
 
@@ -30,74 +27,85 @@ public class Solver {
         goal = game.getStarSystemById(game.getGoalStarSystemId());
 
         topoOrder = new ArrayList<>();
-        Iterator<StarSystem> iterator = new TopologicalOrderIterator<StarSystem, Wormhole>(game.getGraph());
+        
+        Iterator<StarSystem> iterator = new TopologicalOrderIterator<>(game.getGraph());
         iterator.forEachRemaining(topoOrder::add);
 
         pred = new HashMap<>();
+        
         opt = new HashMap<>();
 
-        topoOrderView = topoOrder.subList(topoOrder.indexOf(start), topoOrder.indexOf(goal) + 1);
-        topoOrderView.forEach(node -> {
-            opt.put(node, new Resources(-1, -1));
-            pred.put(node, node);
-        });
-
         //initialize the optimum for the starting node
-        opt.replace(start, Resources.of(start.getTitanium(), game.getUraniumCapacity()));
+        opt.put(start, Resources.of(start.getTitanium(), game.getUraniumCapacity()));
 
         solve();
     }
 
-    private boolean isNodeBeforeStartInTopoOrder(StarSystem node) {
-        return topoOrder.indexOf(start) > topoOrder.indexOf(node);
-    }
-
     private void solve() {
 
-        for (StarSystem starSystem : topoOrderView) {
+        int maxTitanium;
+        int maxUranium;
+        int currentTitanium;
+        int currentUranium;
+        int parentStarSystemId = -1;
+        int uraniumCapacity = game.getUraniumCapacity();
+
+        DirectedNeighborIndex<StarSystem, Wormhole> neighborIndex = new DirectedNeighborIndex<>(game.getGraph());
+
+        for (int i = topoOrder.indexOf(start) + 1; i <= topoOrder.indexOf(goal); ++i) {
+            StarSystem starSystem = topoOrder.get(i);
             if (game.getGraph().inDegreeOf(starSystem) != 0 && game.getGraph().outDegreeOf(starSystem) != 0 || starSystem.equals(goal)) {
-                Resources max = new Resources(-2, -2);
-                StarSystem parent = null;
-                for (StarSystem star : Graphs.predecessorListOf(game.getGraph(), starSystem).stream().filter(v -> !isNodeBeforeStartInTopoOrder(v)).collect(Collectors.toList())) {
+                maxTitanium = Integer.MIN_VALUE;
+                maxUranium = Integer.MIN_VALUE;
+
+                for (StarSystem star : neighborIndex.predecessorListOf(starSystem)) {
+                    Resources optimum = opt.get(star);
+                    
+                    if (optimum == null) continue;
+                    
                     //ignore edges which needs more uranium than the given capacity
                     int cost = game.getGraph().getEdge(star, starSystem).getWeight();
-                    if (cost > game.getUraniumCapacity()) continue;
+                    if (cost > uraniumCapacity) continue;
 
-                    final Resources best = opt.get(star);
 
-                    //create a copy
-                    Resources current = Resources.of(best.getTitanium(), best.getUranium());
+                    currentTitanium = optimum.getTitanium();
+                    currentUranium = optimum.getUranium();
 
                     //substract the travel cost
-                    current = Resources.of(current.getTitanium(), current.getUranium() - cost);
+                    currentUranium -= cost;
 
-                    //we didn't have enough uranium to travel this edge, trade 1 titanium to refill
-                    if (current.getUranium() < 0) {
-                        current = Resources.of(current.getTitanium() - 1, game.getUraniumCapacity() - cost);
+                    //if we didn't have enough uranium to travel this edge, trade 1 titanium to refill
+                    if (currentUranium < 0) {
+                        --currentTitanium;
+                        currentUranium = uraniumCapacity - cost;
                     }
 
-                    if (current.compareTo(max) > 0) {
-                        max = Resources.of(current.getTitanium(), current.getUranium());
-                        parent = star;
+                    if (currentTitanium > maxTitanium) {
+                        maxTitanium = currentTitanium;
+                        maxUranium = currentUranium;
+                        parentStarSystemId = star.getId();
                     }
                 }
 
-                if (max.getTitanium() >= 0) {
-                    max = Resources.of(max.getTitanium() + starSystem.getTitanium(), max.getUranium() + starSystem.getUranium());
-                    if (max.getUranium() > game.getUraniumCapacity()) {
-                        max = Resources.of(max.getTitanium(), game.getUraniumCapacity());
+                if (maxTitanium >= 0) {
+                    maxTitanium += starSystem.getTitanium();
+                    maxUranium += starSystem.getUranium();
+                    if (maxUranium > uraniumCapacity) {
+                        maxUranium = uraniumCapacity;
                     }
-                    opt.replace(starSystem, max);
-                    pred.replace(starSystem, parent);
+                    
+                    opt.put(starSystem, Resources.of(maxTitanium, maxUranium));
+                    pred.put(starSystem, game.getStarSystemById(parentStarSystemId));
                 }
             }
         }
     }
-    
+
     public int getOptimumTitanium() {
-        return opt.get(goal).getTitanium();
+        Resources result = opt.getOrDefault(goal, Resources.of(-1, -1));
+        return result.getTitanium();
     }
-    
+
     public LinkedList<StarSystem> getOptimumPath() {
         LinkedList<StarSystem> path = new LinkedList<>();
         path.add(goal);
