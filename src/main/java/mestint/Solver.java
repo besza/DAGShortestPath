@@ -26,13 +26,13 @@ public class Solver {
 
         goal = game.getStarSystemById(game.getGoalStarSystemId());
 
-        topoOrder = new ArrayList<>();
-        
+        topoOrder = new ArrayList<>(game.getGraph().vertexSet().size());
+
         Iterator<StarSystem> iterator = new TopologicalOrderIterator<>(game.getGraph());
         iterator.forEachRemaining(topoOrder::add);
 
         pred = new HashMap<>();
-        
+
         opt = new HashMap<>();
 
         //initialize the optimum for the starting node
@@ -52,21 +52,25 @@ public class Solver {
 
         DirectedNeighborIndex<StarSystem, Wormhole> neighborIndex = new DirectedNeighborIndex<>(game.getGraph());
 
-        for (int i = topoOrder.indexOf(start) + 1; i <= topoOrder.indexOf(goal); ++i) {
+        int goalIndex = topoOrder.indexOf(goal);
+
+        for (int i = topoOrder.indexOf(start) + 1; i <= goalIndex; ++i) {
+
             StarSystem starSystem = topoOrder.get(i);
+
             if (game.getGraph().inDegreeOf(starSystem) != 0 && game.getGraph().outDegreeOf(starSystem) != 0 || starSystem.equals(goal)) {
+
                 maxTitanium = Integer.MIN_VALUE;
                 maxUranium = Integer.MIN_VALUE;
 
                 for (StarSystem star : neighborIndex.predecessorListOf(starSystem)) {
+
                     Resources optimum = opt.get(star);
-                    
+
                     if (optimum == null) continue;
-                    
+
                     //ignore edges which needs more uranium than the given capacity
                     int cost = game.getGraph().getEdge(star, starSystem).getWeight();
-                    if (cost > uraniumCapacity) continue;
-
 
                     currentTitanium = optimum.getTitanium();
                     currentUranium = optimum.getUranium();
@@ -93,7 +97,7 @@ public class Solver {
                     if (maxUranium > uraniumCapacity) {
                         maxUranium = uraniumCapacity;
                     }
-                    
+
                     opt.put(starSystem, Resources.of(maxTitanium, maxUranium));
                     pred.put(starSystem, game.getStarSystemById(parentStarSystemId));
                 }

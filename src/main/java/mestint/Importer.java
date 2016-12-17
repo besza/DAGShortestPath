@@ -34,10 +34,13 @@ public class Importer {
                 int sourceId = scanner.nextInt();
                 int targetId = scanner.nextInt();
                 int weight = scanner.nextInt();
-                //no need to do ifPresent, these vertices definitely exist
-                Wormhole edge = graph.addEdge(vertexSet.stream().filter(v -> v.getId() == sourceId).findFirst().get(),
-                        vertexSet.stream().filter(u -> u.getId() == targetId).findFirst().get());
-                edge.setWeight(weight);
+                //early check for edges that cost more than our capacity
+                if (weight <= uraniumMaxCapacity) {
+                    //no need to do ifPresent, these vertices definitely exist
+                    Wormhole edge = graph.addEdge(vertexSet.stream().filter(v -> v.getId() == sourceId).findFirst().get(),
+                            vertexSet.stream().filter(u -> u.getId() == targetId).findFirst().get());
+                    edge.setWeight(weight);
+                }
             }
 
             return new Game(startingStarSystemId, goalStarSystemId, uraniumMaxCapacity, graph);
